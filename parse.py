@@ -38,7 +38,7 @@ def parse_all(save_to_files=True):
                 try:
                     print(f'Getting {i.contents[0]}')
                     if save_to_files:
-                        f = open(f"sotu_speeches/{i.contents[0]}.txt", "w")
+                        f = open(f"sotu_speeches/{year[0]}.txt", "w")
                         f.write(parse_page(str(i.get('href'))))
                         f.close()
                     else:
