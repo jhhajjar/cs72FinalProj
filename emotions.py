@@ -1,5 +1,4 @@
 from nltk.tokenize import word_tokenize
-from matplotlib import rc
 import matplotlib.pyplot as plt
 import pandas as pd
 import string
@@ -82,7 +81,6 @@ def getEmotions(words, wordToEmotions):
         emotions[key] = emotions[key] / total * 100
 
     return emotions
-    # return max(emotions.items(), key=operator.itemgetter(1))[0]
 
 
 def analyze(filename, wordToEmotions):
@@ -94,7 +92,6 @@ def analyze(filename, wordToEmotions):
     emotions = getEmotions(words, wordToEmotions)    
 
     return emotions
-
 
 
 def main():
@@ -113,9 +110,17 @@ def main():
 
     # Turn the data into a dataframe
     df = pd.DataFrame.from_dict(data, orient='index')
-    print(df)
+
+    # Make directory for graphs
+    if not os.path.exists('graphs/'):
+        os.makedirs('graphs/')
+
+    # Plot each emotion
+    for emotion in list(df):    
+        fig = df[emotion].plot().get_figure()
+        fig.savefig(f'graphs/{emotion}.png')
+        fig.clf()
 
 
 if __name__ == "__main__":
     main()
-
