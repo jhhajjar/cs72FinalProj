@@ -1,9 +1,11 @@
 from nltk.tokenize import word_tokenize
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import string
 import os
 import operator
+from prettytable import PrettyTable
 
 # Reads the large dictionary
 def readNRC(filename):
@@ -93,6 +95,9 @@ def analyze(filename, wordToEmotions):
 
     return emotions
 
+# Returns the date a percent between 1900 and 2020
+def perc(x):
+    return int((100 * (x - 1900) / (2020 - 1900)))
 
 def main():
     # Create the word to emotion dictionary
@@ -105,22 +110,85 @@ def main():
     # Loop through all files and analyze
     files = os.listdir(dir)
     for f in files:
-        print(f'Analyzing {f[:4]}')
-        data[f[:4]] = analyze(f'{dir}{f}', wordToEmotions)
+        if f[:4] != '2007':
+            print(f'Analyzing {f[:4]}')
+            data[f[:4]] = analyze(f'{dir}{f}', wordToEmotions)
 
     # Turn the data into a dataframe
     df = pd.DataFrame.from_dict(data, orient='index')
 
-    # Make directory for graphs
+    # Make directory for graphs and tables
     if not os.path.exists('graphs/'):
         os.makedirs('graphs/')
+    if not os.path.exists('tables/'):
+        os.makedirs('tables/')
 
-    # Plot each emotion
-    for emotion in list(df):    
-        fig = df[emotion].plot().get_figure()
-        fig.savefig(f'graphs/{emotion}.png')
-        fig.clf()
+    # Open the file that contains important dates and read them into lists
+    f = open('dates.txt', 'r')
+    dates ={
+        'war_i': None,
+        'war_f': None,
+        'pandemics': None
+    }
 
+    for line in f.readlines():
+        split = line.strip().split(':')
+        dates[split[0]] = [int(i) for i in split[1].split(',')]
+    f.close()       
+
+    #Plot each emotion with each event
+    for emotion in list(df):  
+        for event in dates.keys():
+            ax = df[emotion].plot()
+            # ax.plot() 
+            # add in the lines for various dates
+            for date in dates[event]:
+                plt.axvline(x=perc(date), linewidth=2, linestyle='--', color='g', alpha=0.5)
+            
+            # plot.plot(plt.vlines(dates['war_i'], 0, 25))
+            plt.xlabel('Year')
+            plt.ylabel('Emotion Level')
+
+            if event == 'war_i':
+                plt.title(f'{emotion} during the start of wars')
+            elif event == 'war_f':
+                plt.title(f'{emotion} during the end of wars')
+            elif event == 'pandemics':
+                plt.title(f'{emotion} during pandemics')
+
+            plt.savefig(f'graphs/{emotion}_{event}.png')
+            plt.clf()
+        
+    # Generate a table to compare values
+    mean = []
+    war_i_mean = []
+    war_f_mean = []
+    pandemic = []
+    emotions = list(df)
+    
+    for emotion in emotions:
+        arr = df[emotion].values
+        # Get the mean of all values and for the event years
+        mean.append(int(np.mean(arr)))
+        
+        war_i_mean.append(round(np.mean(np.array([arr[2017 - i] for i in dates['war_i']])), 2))
+        war_f_mean.append(round(np.mean(np.array([arr[2017 - i] for i in dates['war_f']])), 2))
+        pandemic.append(round(np.mean(np.array([arr[2017 - i] for i in dates['pandemics']])), 2))
+
+    x = PrettyTable()
+    x.field_names = ['Emotion', 'War Start', 'War End', 'Pandemic']
+    for index in range(len(emotions)):
+        x.add_row([emotions[index], war_i_mean[index], war_f_mean[index], pandemic[index]])
+    
+    print(x)
+
+
+
+    #TODO : Find a nice way to make a table of this data. Just make these array the columns and well get some nice data
+    # print('-------------------------------')
+    # for index in range(len(emotions)):
+    #     print(f'{emotions[index]} | {war_i_mean[index]} | {war_f_mean[index]} | {pandemic[index]}')
+    #     print('-------------------------------')
 
 if __name__ == "__main__":
     main()
