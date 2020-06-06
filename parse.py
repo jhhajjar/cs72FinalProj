@@ -16,7 +16,6 @@ def parse_page(link):
     return address
 
 
-
 # If save_to_files is true, then the speeches will be saved a folder. If not, they will be returned in a list
 def parse_all(save_to_files=True):
     if save_to_files:

@@ -95,9 +95,56 @@ def analyze(filename, wordToEmotions):
 
     return emotions
 
-# Returns the date a percent between 1900 and 2020
-def perc(x):
-    return int((100 * (x - 1900) / (2020 - 1900)))
+
+def readDates(category):
+    with open('dates.txt', 'r') as fp:
+        lines = fp.readlines()
+    for line in lines:
+        if(line.split(':')[0] == category):
+            # This is the stupidest line ever but it splits the dates from the date
+            # file into a list of list of all of the date ranges
+            return [list(range(int(x.split('-')[0]), int(x.split('-')[1])+1)) for x in line.strip('\n').split(':')[1].split(',')]
+
+
+def mkdir(dirname):
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+            
+
+# Generates all of the graphs
+def graphs(df, dates):
+    colors = {
+        'wars': 'red',
+        'pandemics': 'orange',
+        'recessions': 'blue'
+    }
+
+    # Loop through each emotion and each event for each emotion
+    for emotion in list(df):  
+        for event in dates.keys():
+            df[emotion].plot()
+
+            # Create the span in the graph
+            for date in dates[event]:
+                start = int(date[0])
+                end = int(date[len(date)-1])
+                plt.axvspan(start, end, alpha=0.15, color=colors[event])
+
+            # Label and title the graphs
+            plt.xlabel('Year')
+            plt.ylabel('Percentage of Emotion Words')
+            if event == 'wars':
+                plt.title(f'{emotion.upper()} during Wartime')
+            elif event == 'recessions':
+                plt.title(f'{emotion.upper()} during Recessions')
+            elif event == 'pandemics':
+                plt.title(f'{emotion.upper()} during Pandemics')
+
+            # Save and clear
+            mkdir(event)
+            plt.savefig(f'{event}/{emotion}_{event}.png')
+            plt.clf()
+
 
 def main():
     # Create the word to emotion dictionary
@@ -109,85 +156,53 @@ def main():
 
     # Loop through all files and analyze
     files = os.listdir(dir)
-    for f in files:
-        if f[:4] != '2007':
-            print(f'Analyzing {f[:4]}')
-            data[f[:4]] = analyze(f'{dir}{f}', wordToEmotions)
+    for f in files[:]:
+        year = int(f[:4])
+        print(f'Analyzing {year}')
+        data[year] = analyze(f'{dir}{f}', wordToEmotions)
 
     # Turn the data into a dataframe
     df = pd.DataFrame.from_dict(data, orient='index')
 
-    # Make directory for graphs and tables
-    if not os.path.exists('graphs/'):
-        os.makedirs('graphs/')
-    if not os.path.exists('tables/'):
-        os.makedirs('tables/')
+    # Read the dates for important events
+    dates = dict()
+    for event in ['wars', 'pandemics', 'recessions']:
+        dates[event] = readDates(event)
 
-    # Open the file that contains important dates and read them into lists
-    f = open('dates.txt', 'r')
-    dates ={
-        'war_i': None,
-        'war_f': None,
-        'pandemics': None
-    }
-
-    for line in f.readlines():
-        split = line.strip().split(':')
-        dates[split[0]] = [int(i) for i in split[1].split(',')]
-    f.close()       
-
-    #Plot each emotion with each event
-    for emotion in list(df):  
-        for event in dates.keys():
-            ax = df[emotion].plot()
-            # ax.plot() 
-            # add in the lines for various dates
-            for date in dates[event]:
-                plt.axvline(x=perc(date), linewidth=2, linestyle='--', color='g', alpha=0.5)
-            
-            # plot.plot(plt.vlines(dates['war_i'], 0, 25))
-            plt.xlabel('Year')
-            plt.ylabel('Emotion Level')
-
-            if event == 'war_i':
-                plt.title(f'{emotion} during the start of wars')
-            elif event == 'war_f':
-                plt.title(f'{emotion} during the end of wars')
-            elif event == 'pandemics':
-                plt.title(f'{emotion} during pandemics')
-
-            plt.savefig(f'graphs/{emotion}_{event}.png')
-            plt.clf()
+    # Graph each emotion
+    graphs(df, dates)
         
     # Generate a table to compare values
-    mean = []
-    war_i_mean = []
-    war_f_mean = []
-    pandemic = []
-    emotions = list(df)
+    means = dict()
     
-    for emotion in emotions:
+    # Go through all of the emotions and get means
+    for emotion in list(df):
+        means[emotion] = dict()
         arr = df[emotion].values
-        # Get the mean of all values and for the event years
-        mean.append(int(np.mean(arr)))
-        
-        war_i_mean.append(round(np.mean(np.array([arr[2017 - i] for i in dates['war_i']])), 2))
-        war_f_mean.append(round(np.mean(np.array([arr[2017 - i] for i in dates['war_f']])), 2))
-        pandemic.append(round(np.mean(np.array([arr[2017 - i] for i in dates['pandemics']])), 2))
 
-    x = PrettyTable()
-    x.field_names = ['Emotion', 'War Start', 'War End', 'Pandemic']
-    for index in range(len(emotions)):
-        x.add_row([emotions[index], war_i_mean[index], war_f_mean[index], pandemic[index]])
+        # Get the mean of all values and for the event years
+        means[emotion]['average'] = round(np.mean(arr), 2)
+        means[emotion]['war'] = round(np.mean(np.array([arr[2017 - j] for i in dates['wars'] for j in i])), 2)
+        means[emotion]['recession'] = round(np.mean(np.array([arr[2017 - j] for i in dates['recessions'] for j in i])), 2)
+        means[emotion]['pandemics'] = round(np.mean(np.array([arr[2017 - j] for i in dates['pandemics'] for j in i])), 2)
+
+    # print(means)
+    means_df = pd.DataFrame.from_dict(means)
+    print(means_df)
+
+    # x = PrettyTable()
+    # x.field_names = ['Emotion', 'War', 'Recession', 'Pandemic']
+    # for index in range(len(list(df))):
+    #     x.add_row([emotions[index], war_mean[index], recession_mean[index], pandemics_mean[index]])
     
-    print(x)
+    # print(x)
 
 
 
     #TODO : Find a nice way to make a table of this data. Just make these array the columns and well get some nice data
     # print('-------------------------------')
     # for index in range(len(emotions)):
-    #     print(f'{emotions[index]} | {war_i_mean[index]} | {war_f_mean[index]} | {pandemic[index]}')
+    #     print(f'{emotions[index]} | {war_mean[index]} | {recession_mean[index]} | {pandemic[index]}')
     #     print('-------------------------------')
 
 if __name__ == "__main__":
