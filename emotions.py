@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import string
 import os
+import random
 
 
 def readNRC(filename):
@@ -117,7 +118,7 @@ def mkdir(dirname):
             
 
 # Generates all of the graphs
-def graphs(df, dates):
+def graphDates(df, dates):
     """ Graphs the data in the dataframe with appropriate dates.
     """
     colors = {
@@ -138,20 +139,31 @@ def graphs(df, dates):
                 end = int(date[-1])
                 plt.axvspan(start, end, alpha=0.20, color=colors[event])
 
-            # Label and title the graphs
+            # Label and title the graph
             plt.xlabel('Year')
             plt.ylabel('Percentage of Words Conveying This Emotion')
-            if event == 'wars':
-                plt.title(f'{emotion.upper()} during Wartime')
-            elif event == 'recessions':
-                plt.title(f'{emotion.upper()} during Recessions')
-            elif event == 'pandemics':
-                plt.title(f'{emotion.upper()} during Pandemics')
+            plt.title(f'{emotion.upper()} during {event.title()}')
 
             # Save and clear
             mkdir(event)
             plt.savefig(f'{event}/{emotion}_{event}.png')
             plt.clf()
+
+
+def graphAverages(df):
+    """ Graphs the averages of each emotion by event.
+    """
+    avgdir = 'averages/'
+    mkdir(avgdir)
+    for emotion in list(df):
+        df[emotion].plot(kind='bar', rot=0, color=(random.random(),random.random(),random.random()))
+
+        plt.xlabel('Events')
+        plt.ylabel('Percentage of Words Conveying Emotion')
+        plt.title(f'Average Percentage of {emotion.upper()} Words')
+
+        plt.savefig(f'{avgdir}{emotion}.png')
+        plt.clf()
 
 
 def getMeans(df, dates):
@@ -175,28 +187,29 @@ def getMeans(df, dates):
 
 def main():
     # Create the word to emotion dictionary
-    wordToEmotions = readNRC('NRC-Emotion-Lexicon-Wordlevel-v0.92.txt')
-    dir = './sotu_speeches/'
+    # wordToEmotions = readNRC('NRC-Emotion-Lexicon-Wordlevel-v0.92.txt')
+    # dir = './sotu_speeches/'
 
-    # Create data dictionary to hold all of the years emotions
-    data = dict()
+    # # Create data dictionary to hold all of the years emotions
+    # data = dict()
 
-    # Loop through all files and analyze
-    files = os.listdir(dir)
-    for f in files[:]:
-        year = int(f[:4])
-        print(f'Analyzing {year}')
-        data[year] = analyze(f'{dir}{f}', wordToEmotions)
+    # # Loop through all files and analyze
+    # files = os.listdir(dir)
+    # for f in files[:]:
+    #     year = int(f[:4])
+    #     print(f'Analyzing {year}')
+    #     data[year] = analyze(f'{dir}{f}', wordToEmotions)
 
-    # Turn the data into a dataframe and add 1933
-    years_df = pd.DataFrame.from_dict(data, orient='index')
-    years_df = years_df.append(pd.Series([np.nan]*len(list(years_df)), index=[emotion for emotion in list(years_df)], name=1933))
+    # # Turn the data into a dataframe and add 1933
+    # years_df = pd.DataFrame.from_dict(data, orient='index')
+    # years_df = years_df.append(pd.Series([np.nan]*len(list(years_df)), index=[emotion for emotion in list(years_df)], name=1933))
+    years_df = pd.read_csv('data.csv')
 
     # Read the dates for important events
     dates = readDates()
 
     # Graph each emotion
-    graphs(years_df, dates)
+    # graphDates(years_df, dates)
 
     # Reformat the dates dictionary for taking means, turn from list of lists to list
     for event in dates.keys():
@@ -204,7 +217,8 @@ def main():
         
     # Make a dataframe to compare the average emotion for each event
     means_df = getMeans(years_df, dates)
-    print(means_df)
+    # print(means_df)
+    graphAverages(means_df)
 
 if __name__ == "__main__":
     main()
