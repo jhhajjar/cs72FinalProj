@@ -4,11 +4,11 @@ import numpy as np
 import pandas as pd
 import string
 import os
-import operator
-from prettytable import PrettyTable
 
-# Reads the large dictionary
+
 def readNRC(filename):
+    """ Reads the NRC lexicon into a dictionary.
+    """
     wordToEmotions = dict()
     with open(filename, 'r') as fp:
         # Loop through lines
@@ -86,7 +86,7 @@ def getEmotions(words, wordToEmotions):
 
 
 def analyze(filename, wordToEmotions):
-    """ Performs general analysis on the file
+    """ Performs general analysis on the file.
     """
     # Get all words from the file
     words = getWords(filename)
@@ -96,23 +96,30 @@ def analyze(filename, wordToEmotions):
     return emotions
 
 
-def readDates(category):
+def readDates():
+    """ Reads in the dates file into a list of lists.
+    """
+    dates = dict()
     with open('dates.txt', 'r') as fp:
         lines = fp.readlines()
     for line in lines:
-        if(line.split(':')[0] == category):
-            # This is the stupidest line ever but it splits the dates from the date
-            # file into a list of list of all of the date ranges
-            return [list(range(int(x.split('-')[0]), int(x.split('-')[1])+1)) for x in line.strip('\n').split(':')[1].split(',')]
-
+        # This is the stupidest line ever but it splits the dates from the date
+        # file into a list of list of all of the date ranges
+        dates[line.split(':')[0]] = [list(range(int(x.split('-')[0]), int(x.split('-')[1])+1)) for x in line.strip('\n').split(':')[1].split(',')]
+        
+    return dates
 
 def mkdir(dirname):
+    """ Simple function to make a directory.
+    """
     if not os.path.exists(dirname):
         os.makedirs(dirname)
             
 
 # Generates all of the graphs
 def graphs(df, dates):
+    """ Graphs the data in the dataframe with appropriate dates.
+    """
     colors = {
         'wars': 'red',
         'pandemics': 'orange',
@@ -122,17 +129,18 @@ def graphs(df, dates):
     # Loop through each emotion and each event for each emotion
     for emotion in list(df):  
         for event in dates.keys():
+            # Plot the graph
             df[emotion].plot()
 
             # Create the span in the graph
             for date in dates[event]:
                 start = int(date[0])
-                end = int(date[len(date)-1])
-                plt.axvspan(start, end, alpha=0.15, color=colors[event])
+                end = int(date[-1])
+                plt.axvspan(start, end, alpha=0.20, color=colors[event])
 
             # Label and title the graphs
             plt.xlabel('Year')
-            plt.ylabel('Percentage of Emotion Words')
+            plt.ylabel('Percentage of Words Conveying This Emotion')
             if event == 'wars':
                 plt.title(f'{emotion.upper()} during Wartime')
             elif event == 'recessions':
@@ -144,6 +152,25 @@ def graphs(df, dates):
             mkdir(event)
             plt.savefig(f'{event}/{emotion}_{event}.png')
             plt.clf()
+
+
+def getMeans(df, dates):
+    """ Generates the means for each emotion and each event type.
+    """
+    means = dict()
+    for emotion in list(df):
+        # Dictionary to store the mean for each emotion
+        means[emotion] = dict()
+        arr = df[emotion].values
+        means[emotion]['average'] = round(np.nanmean(arr), 2)
+        for event in dates.keys():
+
+        # Get the mean of all values and for the event years
+            means[emotion][event] = round(np.nanmean([arr[i-1900] for i in dates[event]]), 2)
+            means[emotion][event] = round(np.nanmean([arr[i-1900] for i in dates[event]]), 2)
+            means[emotion][event] = round(np.nanmean([arr[i-1900] for i in dates[event]]), 2)
+    
+    return pd.DataFrame.from_dict(means)
 
 
 def main():
@@ -161,49 +188,23 @@ def main():
         print(f'Analyzing {year}')
         data[year] = analyze(f'{dir}{f}', wordToEmotions)
 
-    # Turn the data into a dataframe
-    df = pd.DataFrame.from_dict(data, orient='index')
+    # Turn the data into a dataframe and add 1933
+    years_df = pd.DataFrame.from_dict(data, orient='index')
+    years_df = years_df.append(pd.Series([np.nan]*len(list(years_df)), index=[emotion for emotion in list(years_df)], name=1933))
 
     # Read the dates for important events
-    dates = dict()
-    for event in ['wars', 'pandemics', 'recessions']:
-        dates[event] = readDates(event)
+    dates = readDates()
 
     # Graph each emotion
-    graphs(df, dates)
+    graphs(years_df, dates)
+
+    # Reformat the dates dictionary for taking means, turn from list of lists to list
+    for event in dates.keys():
+        dates[event] = [x for li in dates[event] for x in li]
         
-    # Generate a table to compare values
-    means = dict()
-    
-    # Go through all of the emotions and get means
-    for emotion in list(df):
-        means[emotion] = dict()
-        arr = df[emotion].values
-
-        # Get the mean of all values and for the event years
-        means[emotion]['average'] = round(np.mean(arr), 2)
-        means[emotion]['war'] = round(np.mean(np.array([arr[2017 - j] for i in dates['wars'] for j in i])), 2)
-        means[emotion]['recession'] = round(np.mean(np.array([arr[2017 - j] for i in dates['recessions'] for j in i])), 2)
-        means[emotion]['pandemics'] = round(np.mean(np.array([arr[2017 - j] for i in dates['pandemics'] for j in i])), 2)
-
-    # print(means)
-    means_df = pd.DataFrame.from_dict(means)
+    # Make a dataframe to compare the average emotion for each event
+    means_df = getMeans(years_df, dates)
     print(means_df)
-
-    # x = PrettyTable()
-    # x.field_names = ['Emotion', 'War', 'Recession', 'Pandemic']
-    # for index in range(len(list(df))):
-    #     x.add_row([emotions[index], war_mean[index], recession_mean[index], pandemics_mean[index]])
-    
-    # print(x)
-
-
-
-    #TODO : Find a nice way to make a table of this data. Just make these array the columns and well get some nice data
-    # print('-------------------------------')
-    # for index in range(len(emotions)):
-    #     print(f'{emotions[index]} | {war_mean[index]} | {recession_mean[index]} | {pandemic[index]}')
-    #     print('-------------------------------')
 
 if __name__ == "__main__":
     main()
