@@ -128,8 +128,13 @@ def graphDates(df, dates):
     }
 
     # Loop through each emotion and each event for each emotion
-    for emotion in list(df):  
+    count = 0
+    for emotion in list(df): 
         for event in dates.keys():
+            # Progress bar
+            count += 1
+            print('Graphing [%d%%]\r' % (count*100/(len(list(df))*len(dates.keys()))), end='') 
+
             # Plot the graph
             df[emotion].plot()
 
@@ -149,21 +154,31 @@ def graphDates(df, dates):
             plt.savefig(f'{event}/{emotion}_{event}.png')
             plt.clf()
 
+    print()
+
 
 def graphAverages(df):
     """ Graphs the averages of each emotion by event.
     """
     avgdir = 'averages/'
     mkdir(avgdir)
+    count = 0
     for emotion in list(df):
+        # Progress Bar
+        count += 1
+        print('Graphing Averages [%d%%]\r' % (count*100/len(list(df))), end='')
+
+        # Make Bar Plot
         df[emotion].plot(kind='bar', rot=0, alpha=0.8, color=['g', 'r', 'orange', 'b'])
 
+        # Label and save
         plt.xlabel('Events')
         plt.ylabel('Percentage of Words Conveying Emotion')
         plt.title(f'Average Percentage of {emotion.upper()} Words')
-
         plt.savefig(f'{avgdir}{emotion}.png')
+
         plt.clf()
+    print()
 
 
 def getMeans(df, dates):
@@ -176,10 +191,7 @@ def getMeans(df, dates):
         arr = df[emotion].values
         means[emotion]['average'] = round(np.nanmean(arr), 2)
         for event in dates.keys():
-
-        # Get the mean of all values and for the event years
-            means[emotion][event] = round(np.nanmean([arr[i-1900] for i in dates[event]]), 2)
-            means[emotion][event] = round(np.nanmean([arr[i-1900] for i in dates[event]]), 2)
+            # Get the mean of all values and for the event years
             means[emotion][event] = round(np.nanmean([arr[i-1900] for i in dates[event]]), 2)
     
     return pd.DataFrame.from_dict(means)
@@ -195,10 +207,16 @@ def main():
 
     # Loop through all files and analyze
     files = os.listdir(dir)
+    count = 0
     for f in files[:]:
+        # Progress bar
+        count += 1
+        print('Parsing files [%d%%]\r' % (count*100/len(files)), end='')
+
+        # Get year and analyze
         year = int(f[:4])
-        print(f'Analyzing {year}')
         data[year] = analyze(f'{dir}{f}', wordToEmotions)
+    print()
 
     # Turn the data into a dataframe and add 1933
     years_df = pd.DataFrame.from_dict(data, orient='index')
