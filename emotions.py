@@ -156,7 +156,7 @@ def graphAverages(df):
     avgdir = 'averages/'
     mkdir(avgdir)
     for emotion in list(df):
-        df[emotion].plot(kind='bar', rot=0, color=(random.random(),random.random(),random.random()))
+        df[emotion].plot(kind='bar', rot=0, alpha=0.8, color=['g', 'r', 'orange', 'b'])
 
         plt.xlabel('Events')
         plt.ylabel('Percentage of Words Conveying Emotion')
@@ -187,29 +187,29 @@ def getMeans(df, dates):
 
 def main():
     # Create the word to emotion dictionary
-    # wordToEmotions = readNRC('NRC-Emotion-Lexicon-Wordlevel-v0.92.txt')
-    # dir = './sotu_speeches/'
+    wordToEmotions = readNRC('NRC-Emotion-Lexicon-Wordlevel-v0.92.txt')
+    dir = './sotu_speeches/'
 
-    # # Create data dictionary to hold all of the years emotions
-    # data = dict()
+    # Create data dictionary to hold all of the years emotions
+    data = dict()
 
-    # # Loop through all files and analyze
-    # files = os.listdir(dir)
-    # for f in files[:]:
-    #     year = int(f[:4])
-    #     print(f'Analyzing {year}')
-    #     data[year] = analyze(f'{dir}{f}', wordToEmotions)
+    # Loop through all files and analyze
+    files = os.listdir(dir)
+    for f in files[:]:
+        year = int(f[:4])
+        print(f'Analyzing {year}')
+        data[year] = analyze(f'{dir}{f}', wordToEmotions)
 
-    # # Turn the data into a dataframe and add 1933
-    # years_df = pd.DataFrame.from_dict(data, orient='index')
-    # years_df = years_df.append(pd.Series([np.nan]*len(list(years_df)), index=[emotion for emotion in list(years_df)], name=1933))
-    years_df = pd.read_csv('data.csv')
+    # Turn the data into a dataframe and add 1933
+    years_df = pd.DataFrame.from_dict(data, orient='index')
+    years_df = years_df.append(pd.Series([np.nan]*len(list(years_df)), index=[emotion for emotion in list(years_df)], name=1933))
+    # years_df = pd.read_csv('data.csv')
 
     # Read the dates for important events
     dates = readDates()
 
     # Graph each emotion
-    # graphDates(years_df, dates)
+    graphDates(years_df, dates)
 
     # Reformat the dates dictionary for taking means, turn from list of lists to list
     for event in dates.keys():
@@ -217,7 +217,6 @@ def main():
         
     # Make a dataframe to compare the average emotion for each event
     means_df = getMeans(years_df, dates)
-    # print(means_df)
     graphAverages(means_df)
 
 if __name__ == "__main__":
